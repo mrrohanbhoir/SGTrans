@@ -1,0 +1,23 @@
+<!doctype html><html lang=en><head><meta charset=utf-8><title>SGTrans Customer</title><link rel=stylesheet href=https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css><script src=https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js></script><script src=sgt.js></script></head><body><main>
+<div id=lg class=card><h2>Sign in</h2><div class=row><div><b>Fixed B2B customer</b><input id=bi placeholder="Customer ID (B2B-XXXX)"><input id=bp type=password placeholder=Password><button onclick=b2b()>Sign in</button></div>
+<div><b>Spot booking</b><input id=ph inputmode=numeric placeholder="10-digit mobile"><button class=s onclick=otp()>Send OTP</button><input id=oc placeholder="6-digit OTP"><button onclick=ver()>Verify</button></div></div></div>
+<div id=ap hidden><div class=card><h2>New vehicle request</h2><div class=row><input id=pu placeholder="Pickup address"><input id=dr placeholder="Drop address"></div>
+<div class=row><input id=rn placeholder="Receiver name"><input id=rp placeholder="Receiver mobile"></div><div class=row><select id=vh></select><input id=mat placeholder="Material and weight"></div>
+<button class=s onclick=quote()>Get route and price</button><div id=q></div><div id=m class=map></div><button id=go hidden onclick=place()>Place request</button></div>
+<div class=card><h2>My requests</h2><div id=ol>No requests yet.</div></div></div></main>
+<script>let U=SGT.me(),Q,M,code;SGT.boot('Customer');
+vh.innerHTML=Object.entries(SGT.VEH).map(([k,v])=>`<option value=${k}>${v.n} (${v.cap})</option>`).join('');
+async function b2b(){U=await SGT.login('b2b',bi.value,bp.value);if(U)init()}
+function otp(){if(!/^\d{10}$/.test(ph.value))return SGT.toast('Enter a 10-digit mobile number');code=''+(100000+Math.floor(Math.random()*9e5));SGT.toast('Demo OTP: '+code)} // replace with an SMS provider in production
+function ver(){if(!code||oc.value!=code)return SGT.toast('Wrong OTP');U={id:'SPOT-'+ph.value,role:'spot',name:'Spot customer',phone:ph.value};SGT.setMe(U);init()}
+function init(){lg.hidden=true;ap.hidden=false;hr.innerHTML='<button class=g onclick=SGT.out()>Sign out</button>';M=SGT.map('m');
+SGT.watch('orders',a=>{const l=a.filter(o=>o.cust.id==U.id).reverse();ol.innerHTML=l.map(o=>`<p><b>${o.id}</b> <span class=tag>${o.status}</span><br>${o.pu.name.split(',')[0]} to ${o.dr.name.split(',')[0]} · ${o.km.toFixed(1)} km · Rs ${o.price.total}${o.driver?' · driver '+o.driver:''}${o.pod?'<br>'+o.pod:''}</p>`).join('')||'No requests yet.'},[])}
+if(U)init();
+async function quote(){if(!pu.value||!dr.value)return SGT.toast('Enter pickup and drop');q.textContent='Calculating...';
+const a=await SGT.nom(pu.value);await new Promise(r=>setTimeout(r,1100));const b=await SGT.nom(dr.value);if(!a||!b){q.textContent='Address not found. Add area and city.';return}
+const r=await SGT.osrm(a,b),open=(await SGT.get('orders',[])).filter(o=>o.status=='new').length,p=SGT.price(vh.value,r.km,open);Q={a,b,r,p};
+M.eachLayer(l=>{if(l instanceof L.Path||l instanceof L.Marker)M.removeLayer(l)});const pl=L.polyline(r.line,{color:'#1d4ed8',weight:5}).addTo(M);L.marker([a.lat,a.lng]).addTo(M);L.marker([b.lat,b.lng]).addTo(M);M.fitBounds(pl.getBounds());
+q.innerHTML=`<p><b>${r.km.toFixed(1)} km</b> · about ${Math.round(r.min)} min · <b>Rs ${p.total}</b>${p.surge?' (demand +'+Math.round(p.surge*100)+'%)':''}<br>SGTrans commission 10%: Rs ${p.comm} · Driver payout: Rs ${p.driver}</p>`;go.hidden=false}
+async function place(){if(!rn.value||!rp.value)return SGT.toast('Receiver name and mobile are required');
+const o={id:SGT.id('ORD'),cust:{id:U.id,name:U.name,phone:U.phone,type:U.role},pu:Q.a,dr:Q.b,km:Q.r.km,veh:vh.value,mat:mat.value,recv:{name:rn.value,phone:rp.value},price:Q.p,status:'new',driver:null,t:Date.now(),log:[[Date.now(),'new']]};
+await SGT.upd('orders',a=>a.push(o),[]);await SGT.notify(`New ${U.role=='b2b'?'dedicated':'spot'} request ${o.id}: ${o.km.toFixed(0)} km, Rs ${o.price.total}`);go.hidden=true;SGT.toast('Request sent to SGTrans operations')}</script></body></html>

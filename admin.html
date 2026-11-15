@@ -1,0 +1,16 @@
+<!doctype html><html lang=en><head><meta charset=utf-8><title>SGTrans Operations</title><link rel=stylesheet href=https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css><script src=https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js></script><script src=sgt.js></script></head><body><main>
+<div id=lg class=card><h2>Executive sign in</h2><div class=row><input id=ei placeholder="Executive ID (EXE-XXXX)"><input id=ep type=password placeholder=Password><button onclick=go()>Sign in</button></div></div>
+<div id=ap hidden><div class=card><h2>Live fleet</h2><div id=m class=map></div></div><div class=card><h2>Alerts</h2><div id=al>None yet.</div></div>
+<div class=card><h2>Requests</h2><table><thead><tr><th>Order<th>Route<th>Status<th>Driver</thead><tbody id=ot></tbody></table></div></div></main>
+<script>let U=SGT.me(),M,O=[],D=[],mk={},pl={},seen=new Set(),lastA;SGT.boot('Operations');
+async function go(){U=await SGT.login('exec',ei.value,ep.value);if(U)init()}
+const short=s=>s.name.split(',')[0];
+function rows(){ot.innerHTML=O.slice().reverse().map(o=>`<tr><td>${o.id}<br><small>${o.cust.name} (${o.cust.type})</small><td>${short(o.pu)} to ${short(o.dr)}<br><small>${o.km.toFixed(1)} km · ${SGT.VEH[o.veh].n} · Rs ${o.price.total} · receiver ${o.recv.name} ${o.recv.phone}</small><td><span class=tag>${o.status}</span>${o.pod?'<br><small>'+o.pod+'</small>':''}<td>${['new','assigned'].includes(o.status)?`<select id=d${o.id}>${D.map(d=>`<option value=${d.id} ${d.id==o.driver?'selected':''}>${d.name} (${d.id})</option>`).join('')}</select><button onclick="asg('${o.id}')">Assign</button>`:o.driver||''}`).join('')}
+const asg=i=>{const d=document.getElementById('d'+i).value;if(!d)return SGT.toast('Create a driver first in the owner panel');SGT.upd('orders',a=>{const o=a.find(x=>x.id==i);o.driver=d;o.status='assigned';o.log.push([Date.now(),'assigned '+d])},[]);SGT.notify('Order '+i+' assigned to '+d,'driver')};
+function init(){lg.hidden=true;ap.hidden=false;hr.innerHTML=U.name+' <button class=g onclick=SGT.out()>Sign out</button>';M=SGT.map('m');
+SGT.watch('users',us=>{D=us.filter(u=>u.role=='driver');D.forEach(d=>{if(seen.has(d.id))return;seen.add(d.id);
+SGT.watch('loc:'+d.id,l=>{if(!l)return;const p=[l.lat,l.lng];mk[d.id]?mk[d.id].setLatLng(p):mk[d.id]=L.marker(p).addTo(M).bindTooltip(d.name,{permanent:true})},null);
+SGT.watch('hist:'+d.id,h=>{pl[d.id]?pl[d.id].setLatLngs(h):pl[d.id]=L.polyline(h,{color:'#ea580c',weight:3}).addTo(M)},[])});rows()},[]);
+SGT.watch('orders',a=>{O=a;rows()},[]);
+SGT.watch('alerts',a=>{const l=a.filter(x=>x.to=='admin').reverse();al.innerHTML=l.slice(0,8).map(x=>`<p>${new Date(x.t).toLocaleTimeString()} · ${x.m}</p>`).join('')||'None yet.';if(l[0]&&lastA&&l[0].id!=lastA)SGT.toast(l[0].m);lastA=l[0]&&l[0].id},[])}
+if(U)init();</script></body></html>

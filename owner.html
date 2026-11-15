@@ -1,0 +1,20 @@
+<!doctype html><html lang=en><head><meta charset=utf-8><title>Shree Ganesh Transport &amp; Logistics</title><script src=sgt.js></script>
+<style>.hero{background:var(--d);color:#fff;padding:34px 16px}.hero div{max-width:980px;margin:auto}.hero h1{font-size:2rem;margin:0 0 8px;max-width:20ch}.hero a{color:#fff;background:var(--o);padding:9px 14px;border-radius:8px;text-decoration:none;font-weight:600;margin-right:8px;display:inline-block}.stats{display:flex;gap:26px;margin-top:20px;flex-wrap:wrap}.stats b{font-size:1.6rem;color:var(--o2);display:block}.g2{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}</style></head><body>
+<section class=hero><div><h1>Fleet, RMC plant support and material supply across Mumbai region</h1><p>Integrated fleet management for corporate and project logistics, run from Bhiwandi.</p>
+<a href=https://app.sgtrans.co.in>Book a vehicle</a><a href=#pn style="background:#1d4ed8">Owner panel</a>
+<div class=stats><span><b>2</b>Business entities</span><span><b>2</b>RMC plants</span><span><b>24/7</b>Operations</span><span><b>100%</b>Mumbai focus</span></div></div></section>
+<main><div class=g2>
+<div class=card><h2>SearchX Business Solutions Pvt Ltd</h2>Corporate logistics. 303/Tower 4, Mahindra Happiness One, Ranjnoli, Bhiwandi.<br>Small and heavy vehicles, corporate transport, integrated fleet.</div>
+<div class=card><h2>Nishant Indra Project Pvt Ltd</h2>Logistics and fleet operations. 286, Near Gajanan Petrol Pump, Dapode Village, Bhiwandi.<br>Heavy vehicle operations, material transport, project logistics.</div>
+<div class=card><h2>YM RMC Plant</h2>Near Anjur Pump, Dapode, Bhiwandi. Primary hub for heavy fleet and material supply coordination.</div>
+<div class=card><h2>RDC RMC Plant</h2>Anjur Road, Bhiwandi. Supporting fleet and backup capacity for material supply.</div></div>
+<div class=card><h2>Our fleet</h2>Tata Intra V10 / V30 (MH04LY7706, MH04JK3062) · Tata Ace · Mahindra Pickup · Heavy Commercial Trucks. SGTrans-branded, ready for immediate deployment.</div>
+<div class=card><h2>Contact</h2>Director Sunil Mali · <a href="tel:+918983091166">+91 89830 91166</a> · Mankoli, Bhiwandi, Maharashtra</div>
+<section class=card id=pn><h2>Owner control panel</h2>
+<div id=lg class=row><input id=pin type=password placeholder="Owner PIN"><button onclick=open_()>Unlock</button></div>
+<div id=ap hidden><div class=row><select id=rl><option value=driver>Driver</option><option value=b2b>Fixed B2B customer</option><option value=exec>Executive / Admin</option></select><input id=nm placeholder="Full name or company"><input id=ph placeholder="Mobile"><button onclick=mk()>Create ID</button></div>
+<table><thead><tr><th>ID<th>Name<th>Role<th>Mobile<th>Password<th></thead><tbody id=ut></tbody></table></div></section></main>
+<script>SGT.boot('Owner');
+function open_(){if(pin.value!=SGT.CFG.OWNER_PIN)return SGT.toast('Wrong PIN');lg.hidden=true;ap.hidden=false;SGT.watch('users',a=>ut.innerHTML=a.map(u=>`<tr><td>${u.id}<td>${u.name}<td>${u.role}<td>${u.phone}<td>${u.pw}<td><button class=g onclick="rm('${u.id}')">Remove</button>`).join(''),[])}
+async function mk(){if(!nm.value.trim()||!ph.value.trim())return SGT.toast('Name and mobile are required');const u={id:SGT.id({driver:'DRV',b2b:'B2B',exec:'EXE'}[rl.value]),role:rl.value,name:nm.value.trim(),phone:ph.value.trim(),pw:Math.random().toString(36).slice(2,8)};await SGT.upd('users',a=>a.push(u),[]);SGT.toast('Created '+u.id+' · password '+u.pw);nm.value=ph.value=''}
+const rm=i=>SGT.upd('users',a=>{a.splice(a.findIndex(u=>u.id==i),1)},[]);</script></body></html>

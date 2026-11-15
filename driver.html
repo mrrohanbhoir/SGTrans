@@ -1,0 +1,21 @@
+<!doctype html><html lang=en><head><meta charset=utf-8><title>SGTrans Driver</title><link rel=stylesheet href=https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css><script src=https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js></script><script src=sgt.js></script></head><body><main>
+<div id=lg class=card><h2>Driver sign in</h2><div class=row><input id=di placeholder="Driver ID (DRV-XXXX)"><input id=dp type=password placeholder=Password><button onclick=go()>Sign in</button></div></div>
+<div id=ap hidden><div class=card id=oc2>Waiting for a trip.</div><div class=card><div id=m class=map></div><ol id=st></ol></div></div></main>
+<script>let U=SGT.me(),M,cur,O,lay,mm,key,last=0,tn=0;SGT.boot('Driver');
+async function go(){U=await SGT.login('driver',di.value,dp.value);if(U)init()}
+const setSt=(i,p)=>SGT.upd('orders',a=>{const o=a.find(x=>x.id==i);Object.assign(o,p);o.log.push([Date.now(),p.status])},[]);
+function init(){lg.hidden=true;ap.hidden=false;hr.innerHTML=U.name+' <button class=g onclick=SGT.out()>Sign out</button>';M=SGT.map('m');
+SGT.watch('orders',a=>{const p=O&&O.id+O.status;O=a.find(o=>o.driver==U.id&&['assigned','accepted','picked','arrived'].includes(o.status));if(O&&O.status=='assigned'&&p!=O.id+O.status){SGT.toast('New trip assigned: '+O.id);navigator.vibrate&&navigator.vibrate(300)}card();nav()},[]);
+navigator.geolocation.watchPosition(p=>{cur={lat:p.coords.latitude,lng:p.coords.longitude,t:Date.now()};mm?mm.setLatLng([cur.lat,cur.lng]):mm=L.circleMarker([cur.lat,cur.lng],{color:'#ea580c'}).addTo(M);
+if(Date.now()-last>5000){last=Date.now();SGT.set('loc:'+U.id,cur);SGT.upd('hist:'+U.id,h=>{h.push([cur.lat,cur.lng]);if(h.length>600)h.shift()},[])}
+if(O&&O.status=='picked'&&SGT.dist(cur,O.dr)<150)arrive();nav()},e=>SGT.toast('Turn on location access'),{enableHighAccuracy:true})}
+function card(){const o=O;oc2.innerHTML=!o?'Waiting for a trip.':`<h2>${o.id} <span class=tag>${o.status}</span></h2><p>Pickup: ${o.pu.name}<br>Drop: ${o.dr.name}<br>${o.km.toFixed(1)} km · ${o.mat||'material'} · receiver ${o.recv.name} ${o.recv.phone}</p>`+
+({assigned:`<button onclick="setSt('${o.id}',{status:'accepted'})">Accept trip</button>`,accepted:`<button onclick="setSt('${o.id}',{status:'picked'})">Material picked up</button>`,
+picked:`<p>Heading to drop. Arrival alert fires automatically within 150 m.</p><button class=g onclick=arrive()>Simulate arrival (demo)</button>`,
+arrived:`<a href="https://wa.me/91${o.recv.phone}?text=${encodeURIComponent('SGTrans driver has reached your location for '+o.id)}" target=_blank><button class=s>Tell receiver on WhatsApp</button></a><select id=ps><option value=delivered>Delivered</option><option value=return>Return</option><option value=short>Short / Damage</option></select><textarea id=pr placeholder="Remarks (required for Short / Damage)"></textarea><button onclick=pod()>Submit POD</button>`})[o.status]}
+async function nav(){if(!O||!cur||!['accepted','picked'].includes(O.status))return;const k=O.id+O.status;if(k==key&&Date.now()-tn<40000)return;key=k;tn=Date.now();const t=O.status=='picked'?O.dr:O.pu,r=await SGT.osrm(cur,t);
+if(lay)lay.remove();const l=L.polyline(r.line,{color:'#1d4ed8',weight:5});lay=L.layerGroup([l,L.marker([t.lat,t.lng])]).addTo(M);M.fitBounds(l.getBounds());
+st.innerHTML=r.steps.slice(0,8).map(s=>`<li>${s.maneuver.type} ${s.maneuver.modifier||''}${s.name?' on '+s.name:''} · ${Math.round(s.distance)} m</li>`).join('')}
+async function arrive(){if(!O||O.status!='picked')return;await setSt(O.id,{status:'arrived'});SGT.notify(`Driver ${U.name} reached drop for ${O.id} (receiver ${O.recv.name} ${O.recv.phone})`)}
+async function pod(){const s=ps.value,r=pr.value.trim();if(s=='short'&&!r)return SGT.toast('Remarks are required for Short / Damage');const i=O.id;await setSt(i,{status:s,pod:s+(r?': '+r:''),done:Date.now()});SGT.notify(`POD ${i}: ${s}${r?' - '+r:''}`)}
+if(U)init();</script></body></html>
